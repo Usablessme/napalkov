@@ -1,10 +1,9 @@
--- Напишите три запроса (по одному под каждым комментарием).
+-- 1. 10 последних показаний
+SELECT * FROM readings ORDER BY id DESC LIMIT 10;
 
--- 1. Минимум, среднее и максимум по каждому датчику (таблица readings).
+-- 2. минимум, среднее и максимум по каждому датчику
+SELECT sensor, MIN(value) AS min_v, ROUND(AVG(value), 2) AS avg_v, MAX(value) AS max_v
+FROM readings GROUP BY sensor;
 
-
--- 2. Все события по порядку времени (таблица events).
-
-
--- 3. Количество записей в каждой таблице.
-
+-- 3. все события по порядку
+SELECT * FROM events ORDER BY id;

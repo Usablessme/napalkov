@@ -1,0 +1,191 @@
+[
+    {
+        "id": "afb8b176704d3307",
+        "type": "tab",
+        "label": "Поток 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "c3bf19230b2a4809",
+        "type": "inject",
+        "z": "afb8b176704d3307",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 220,
+        "wires": [
+            [
+                "0ca0abdc11c3bfbd"
+            ]
+        ]
+    },
+    {
+        "id": "0ca0abdc11c3bfbd",
+        "type": "file in",
+        "z": "afb8b176704d3307",
+        "name": "data/log.txt",
+        "filename": "data/log.txt",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 350,
+        "y": 180,
+        "wires": [
+            [
+                "e1cd3b05671086a3"
+            ]
+        ]
+    },
+    {
+        "id": "e1cd3b05671086a3",
+        "type": "function",
+        "z": "afb8b176704d3307",
+        "name": "Разбор лога",
+        "func": "const T = 1;\n\nconst RANGES = {\n    s1: [0, 100],\n    s2: [-20, 80],\n    s3: [0, 100]\n};\n\nconst text = String(msg.payload).replace(/^\\uFEFF/, \"\");\nconst sql = [];\n\ntry {\n    for (const raw of text.split(/\\r?\\n/)) {\n        const line = raw.trim();\n        if (!line) continue;\n\n        const parts = line.split(/\\s+/);\n        const kind = parts.shift();\n\n        // Пропускаем служебные сообщения симулятора.\n        if (kind !== \"DATA\" && kind !== \"EVENT\") continue;\n\n        const f = {};\n        for (const part of parts) {\n            const i = part.indexOf(\"=\");\n            if (i > 0) {\n                f[part.slice(0, i)] = part.slice(i + 1);\n            }\n        }\n\n        const n = Number(f.n);\n        if (!Number.isSafeInteger(n) || n < 1) {\n            throw new Error(\"Некорректный n: \" + line);\n        }\n\n        const t = n * T;\n\n        if (kind === \"DATA\") {\n            for (const sensor of [\"s1\", \"s2\", \"s3\"]) {\n                if (f[sensor] === undefined || f[sensor] === \"\") {\n                    throw new Error(\"Нет \" + sensor + \": \" + line);\n                }\n\n                const value = Number(f[sensor]);\n                if (!Number.isFinite(value)) {\n                    throw new Error(\"Не число \" + sensor + \": \" + line);\n                }\n\n                sql.push(\n                    `INSERT INTO readings(n,t_s,sensor,value) ` +\n                    `VALUES(${n},${t},'${sensor}',${value});`\n                );\n\n                const [min, max] = RANGES[sensor];\n\n                if (value < min || value > max) {\n                    sql.push(\n                        `INSERT INTO events(n,t_s,type,message) ` +\n                        `VALUES(${n},${t},'FAULT',` +\n                        `'датчик ${sensor} вне диапазона');`\n                    );\n                }\n            }\n        } else {\n            if (![\"THRESHOLD\", \"NORMAL\"].includes(f.type)) {\n                throw new Error(\"Неизвестный тип события: \" + line);\n            }\n\n            sql.push(\n                `INSERT INTO events(n,t_s,type,message) ` +\n                `VALUES(${n},${t},'${f.type}','');`\n            );\n        }\n    }\n\n    if (sql.length === 0) {\n        throw new Error(\"В файле нет строк DATA или EVENT\");\n    }\n} catch (err) {\n    node.error(err.message, msg);\n    return null;\n}\n\nconst head =\n    \"BEGIN;\\n\" +\n    \"DELETE FROM readings;\\n\" +\n    \"DELETE FROM events;\\n\" +\n    \"DELETE FROM sqlite_sequence \" +\n    \"WHERE name IN ('readings','events');\\n\";\n\nreturn [\n    null,\n    {\n        payload: head + sql.join(\"\\n\") + \"\\nCOMMIT;\\n\"\n    }\n];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 180,
+        "wires": [
+            [],
+            [
+                "7d3351f2becebd50"
+            ]
+        ]
+    },
+    {
+        "id": "5fb99e495fad2e54",
+        "type": "exec",
+        "z": "afb8b176704d3307",
+        "command": "sqlite3 -bail db/variant.db \".read db/schema.sql\" \".read db/load.sql\"",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 1020,
+        "y": 220,
+        "wires": [
+            [
+                "96f4dffc0a17af4d"
+            ],
+            [
+                "f0b103a2a1f752d4"
+            ],
+            [
+                "fc4e141ec81ad52b"
+            ]
+        ]
+    },
+    {
+        "id": "7d3351f2becebd50",
+        "type": "file",
+        "z": "afb8b176704d3307",
+        "name": "db/load.sql",
+        "filename": "db/load.sql",
+        "filenameType": "str",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 690,
+        "y": 220,
+        "wires": [
+            [
+                "5fb99e495fad2e54"
+            ]
+        ]
+    },
+    {
+        "id": "96f4dffc0a17af4d",
+        "type": "debug",
+        "z": "afb8b176704d3307",
+        "name": "Результат",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1370,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "f0b103a2a1f752d4",
+        "type": "debug",
+        "z": "afb8b176704d3307",
+        "name": "Ошибки",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1360,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "fc4e141ec81ad52b",
+        "type": "debug",
+        "z": "afb8b176704d3307",
+        "name": "Завершение",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1370,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "3c5a42f5e7c99920",
+        "type": "watch",
+        "z": "afb8b176704d3307",
+        "name": "data/log.txt",
+        "files": "data/log.txt",
+        "recursive": "",
+        "x": 180,
+        "y": 140,
+        "wires": [
+            [
+                "0ca0abdc11c3bfbd"
+            ]
+        ]
+    }
+]

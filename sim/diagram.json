@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "author": "Variant 17 - Kitchen",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-gas-sensor", "id": "gas1", "top": 270, "left": -20, "attrs": {} },
+    { "type": "wokwi-ntc-temperature-sensor", "id": "ntc1", "top": 270, "left": 150, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht1", "top": 270, "left": 290, "attrs": { "temperature": "25", "humidity": "50" } },
+    { "type": "wokwi-relay-module", "id": "relay1", "top": 120, "left": 340, "attrs": {} },
+    { "type": "wokwi-led", "id": "led1", "top": -90, "left": 360, "attrs": { "color": "yellow" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": -20, "left": 270, "attrs": { "value": "200" } }
+  ],
+  "connections": [
+    [ "gas1:VCC", "uno:5V", "red", [] ],
+    [ "gas1:GND", "uno:GND.2", "black", [] ],
+    [ "gas1:AOUT", "uno:A0", "green", [] ],
+
+    [ "ntc1:VCC", "uno:5V", "red", [] ],
+    [ "ntc1:GND", "uno:GND.2", "black", [] ],
+    [ "ntc1:OUT", "uno:A1", "green", [] ],
+
+    [ "dht1:VCC", "uno:5V", "red", [] ],
+    [ "dht1:GND", "uno:GND.2", "black", [] ],
+    [ "dht1:SDA", "uno:2", "green", [] ],
+
+    [ "relay1:VCC", "uno:5V", "red", [] ],
+    [ "relay1:GND", "uno:GND.2", "black", [] ],
+    [ "relay1:IN", "uno:7", "green", [] ],
+
+    [ "uno:8", "r1:1", "green", [] ],
+    [ "r1:2", "led1:A", "green", [] ],
+    [ "led1:C", "uno:GND.1", "black", [] ]
+  ],
+  "dependencies": {}
+}
